@@ -74,10 +74,6 @@ public class BuildOrder {
             return this;
         }
 
-        public BuildOrderBuilder startBuildWorkers() {
-            return this;
-        }
-
         public BuildOrder build() {
             return new BuildOrder(orders, tags);
         }

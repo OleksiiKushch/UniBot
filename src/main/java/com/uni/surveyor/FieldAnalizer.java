@@ -58,7 +58,7 @@ public class FieldAnalizer {
         return Point2d.of(internalX, internalY);
     }
 
+    // implement this method, or mark the corresponding structure on the map when calculating its coordinates (position)
     public static void markStructureOnMap(int[][] map, int y, int x, int size) {
-
     }
 }

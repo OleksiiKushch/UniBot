@@ -1,4 +1,4 @@
-package com.uni.functions.legacy;
+package com.uni.functions;
 
 import com.github.ocraft.s2client.bot.gateway.ActionInterface;
 import com.github.ocraft.s2client.bot.gateway.ObservationInterface;
@@ -14,10 +14,11 @@ public interface BuildSupplyDepot extends BuildStructure {
     default void tryToBuildSupply(ObservationInterface observation, ActionInterface actions, boolean asSingle) {
         if (!(observation.getFoodUsed() <= observation.getFoodCap() - calculateThreshold(observation)) &&
                 observation.getFoodCap() != 200) {
-            tryBuildStructure(observation, actions, Abilities.BUILD_SUPPLY_DEPOT, asSingle, null);
+            tryBuildStructure(observation, actions, Abilities.BUILD_SUPPLY_DEPOT, getPosition(observation), asSingle, null);
         }
     }
 
+    // TODO: Improve this
     private Point2d getPosition(ObservationInterface observation) {
         if (UniBotUtils.countMyUnit(observation, Units.TERRAN_SUPPLY_DEPOT) +
                 UniBotUtils.countMyUnit(observation, Units.TERRAN_SUPPLY_DEPOT_LOWERED) == 4) {

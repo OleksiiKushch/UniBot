@@ -16,9 +16,7 @@ import com.uni.functions.BuildCsv;
 import com.uni.functions.BuildStructure;
 import com.uni.functions.GasMining;
 import com.uni.functions.MineralMining;
-import com.uni.functions.legacy.AttackEnemy;
-import com.uni.functions.legacy.Barrack;
-import com.uni.functions.legacy.BuildSupplyDepot;
+import com.uni.functions.BuildSupplyDepot;
 import com.uni.functions.unit.Ghost;
 import com.uni.strategies.Strategy;
 import com.uni.surveyor.GameMap;
@@ -26,18 +24,13 @@ import com.uni.utils.UniBotUtils;
 
 import java.util.Optional;
 
-import static com.github.ocraft.s2client.protocol.data.Units.TERRAN_FACTORY;
-import static com.github.ocraft.s2client.protocol.data.Units.TERRAN_GHOST;
-import static com.github.ocraft.s2client.protocol.data.Units.TERRAN_GHOST_ACADEMY;
 
 public class DoubleNuke5Min implements Strategy,
         BuildCsv,
         BuildStructure,
         BuildSupplyDepot,
-        Barrack,
         MineralMining,
         GasMining,
-        AttackEnemy,
 
         Ghost
 {
@@ -158,9 +151,8 @@ public class DoubleNuke5Min implements Strategy,
                         (obs, act) -> areGhostAcademiesNotSleep(obs))
 
                 // drop two ghost on enemy main
-                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_MEDIVAC).ifPresent(unit -> {
-                    act.unitCommand(unit, Abilities.UNLOAD_ALL_AT_MEDIVAC, GameMap.enemyMainMostDistantPoint, true);
-                    }), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
+                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_MEDIVAC).ifPresent(unit ->
+                        act.unitCommand(unit, Abilities.UNLOAD_ALL_AT_MEDIVAC, GameMap.enemyMainMostDistantPoint, true)), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
                 .inQueue((obs, act) -> obs.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_GHOST)).stream()
                                 .map(UnitInPool::unit)
                                 .forEach(ghost -> act.unitCommand(ghost, Abilities.BEHAVIOR_HOLD_FIRE_ON_GHOST, false)),
@@ -241,14 +233,6 @@ public class DoubleNuke5Min implements Strategy,
 
     @Override
     public void onBuildingConstructionComplete(ObservationInterface observation, ActionInterface actions, UnitInPool unitInPool) {
-//        Unit unit = unitInPool.unit();
-//        switch ((Units) unit.getType()) {
-//            case TERRAN_SUPPLY_DEPOT:
-//                actions.unitCommand(unit, Abilities.MORPH_SUPPLY_DEPOT_LOWER, false);
-//                break;
-//            default:
-//                break;
-//        }
     }
 
     @Override
@@ -291,19 +275,5 @@ public class DoubleNuke5Min implements Strategy,
                         actions.unitCommand(supply, Abilities.MORPH_SUPPLY_DEPOT_LOWER, false);
                     }
                 });
-    }
-
-    private Point2d calculateSecretEnemyMainPosition(ObservationInterface observation) {
-        Optional<Point2d> enemyPosition = GameMap.findEnemyPosition(observation);
-        if (enemyPosition.isPresent()) {
-            Point2d dropCoordinate = enemyPosition.get();
-            if (dropCoordinate.getX() == 43.5 && dropCoordinate.getY() == 141.5) {
-                dropCoordinate = dropCoordinate.add(Point2d.of(19, 5));
-            } else if (dropCoordinate.getX() == 156.5 && dropCoordinate.getY() == 46.5) {
-                dropCoordinate = dropCoordinate.add(Point2d.of(-19, -5));
-            }
-            return dropCoordinate;
-        }
-        return Point2d.of(0, 0);
     }
 }

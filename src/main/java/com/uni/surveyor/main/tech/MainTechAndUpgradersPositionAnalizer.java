@@ -11,7 +11,7 @@ public class MainTechAndUpgradersPositionAnalizer {
         Point2d firstGhostsAcademy;
         Point2d secondGhostsAcademy;
         Point2d thirdGhostsAcademy;
-        MainSupplyCoordinates mainSupplyCoordinates = null;
+        MainSupplyCoordinates mainSupplyCoordinates;
         if (Math.abs(startPosition.getX() - gasAntiRumpPosition.getX()) > Math.abs(startPosition.getY() - gasAntiRumpPosition.getY())) {
             if (startPosition.getX() > gasAntiRumpPosition.getX()) {
                 firstGhostsAcademy = gasAntiRumpPosition.add(-FieldAnalizer.SIZE_3x3, 0);
