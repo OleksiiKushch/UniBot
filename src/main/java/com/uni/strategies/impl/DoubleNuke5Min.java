@@ -145,7 +145,7 @@ public class DoubleNuke5Min implements Strategy,
                                 .forEach(ghost -> act.unitCommand(unit, Abilities.LOAD, ghost, true));
                         act.unitCommand(unit, Abilities.MOVE, GameMap.enemyMainMostDistantPoint, true);
                     }
-                }), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_MEDIVAC) == 1 && UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
+                }), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_MEDIVAC) == 1 && UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 0)
 
                 .inQueue(this::buildNukes,
                         (obs, act) -> areGhostAcademiesNotSleep(obs))
