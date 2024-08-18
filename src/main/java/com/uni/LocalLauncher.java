@@ -1,7 +1,6 @@
 package com.uni;
 
 import com.github.ocraft.s2client.bot.S2Coordinator;
-import com.github.ocraft.s2client.protocol.game.BattlenetMap;
 import com.github.ocraft.s2client.protocol.game.Difficulty;
 import com.github.ocraft.s2client.protocol.game.LocalMap;
 import com.github.ocraft.s2client.protocol.game.Race;
@@ -10,7 +9,7 @@ import com.uni.strategies.impl.DoubleNuke5Min;
 
 import java.nio.file.Paths;
 
-public class UniBotLauncher {
+public class LocalLauncher {
 
     /**
      * 2 2 2    2 2 1

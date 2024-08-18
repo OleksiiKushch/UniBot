@@ -12,6 +12,7 @@ import com.uni.surveyor.GameMap;
 import com.uni.utils.UniBotUtils;
 
 import java.util.Optional;
+import java.util.Set;
 
 
 public interface MineralMining {
@@ -33,7 +34,7 @@ public interface MineralMining {
     }
 
     default Optional<Unit> findNearestMineralPatch(ObservationInterface observation, Point2d target, int limit) {
-        return UniBotUtils.findNearestUnits(observation, target, Units.NEUTRAL_MINERAL_FIELD, Alliance.NEUTRAL, limit, this::isMineralCloseEnoughActiveBase).stream()
+        return UniBotUtils.findNearestUnits(observation, target, Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, limit, this::isMineralCloseEnoughActiveBase).stream()
                 .findFirst();
     }
 

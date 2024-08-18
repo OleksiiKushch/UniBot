@@ -11,9 +11,11 @@ import com.github.ocraft.s2client.protocol.unit.Unit;
 import com.uni.utils.UniBotUtils;
 
 import java.util.List;
+import java.util.Set;
 
 public interface GasMining extends BuildStructure {
 
+    // TODO: Sometimes, you get SCVs with minerals anyway!
     default void tryBuildGasRefinery(ObservationInterface observation, ActionInterface actions) {
         final int NEED_ONLY_ONE_SCV = 1;
 
@@ -23,7 +25,7 @@ public interface GasMining extends BuildStructure {
                                 || Units.TERRAN_ORBITAL_COMMAND.equals(unit.getType())
                                 || Units.TERRAN_PLANETARY_FORTRESS.equals(unit.getType()))
                 .limit(1)
-                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), Units.NEUTRAL_VESPENE_GEYSER, Alliance.NEUTRAL, 2, u -> true))
+                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, 2, u -> true))
                 .flatMap(List::stream)
                 .filter(gas -> isFree(observation, gas.getPosition().toPoint2d()))
                 .limit(1)

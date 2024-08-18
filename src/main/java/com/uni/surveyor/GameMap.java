@@ -63,7 +63,7 @@ public class GameMap {
     private static Point2d findEnemyMainMostDistantPoint(ObservationInterface observation) {
         Point2d enemyStartPosition = findEnemyPosition(observation).orElse(null);
         Point2d enemyRampPosition = MainRampPositionAnalizer.findNearestRampDescent(enemyMainMap, enemyStartPosition);
-        List<Unit> gases = UniBotUtils.findNearestUnits(observation, enemyStartPosition, Units.NEUTRAL_VESPENE_GEYSER, Alliance.NEUTRAL, 2, u -> true);
+        List<Unit> gases = UniBotUtils.findNearestUnits(observation, enemyStartPosition, Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, 2, u -> true);
         return MainPositionAnalizer.findMostDistantPoint(enemyMainMap,
                 enemyStartPosition,
                 gases.get(0).getPosition().toPoint2d(), // first gas
@@ -93,11 +93,11 @@ public class GameMap {
                 startPosition, rampStartPosition);
         return MainTechAndUpgradersPositionAnalizer.findAllTechAndUpgradersCoordinates(startPosition,
                 gasAntiRampCoordinates, UniBotUtils.findNearestUnits(observation, gasAntiRampCoordinates,
-                        Units.NEUTRAL_MINERAL_FIELD, Alliance.NEUTRAL, 2, u -> true).get(0).getPosition().toPoint2d());
+                        Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, 2, u -> true).get(0).getPosition().toPoint2d());
     }
 
     public static Point2d findGasAntiRampPosition(ObservationInterface observation, Point2d startPosition, Point2d rampPosition) {
-        return UniBotUtils.findNearestUnits(observation, startPosition, Units.NEUTRAL_VESPENE_GEYSER, Alliance.NEUTRAL, 2, u -> true)
+        return UniBotUtils.findNearestUnits(observation, startPosition, Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, 2, u -> true)
                 .stream()
                 .max(Comparator.comparing(u -> u.getPosition().toPoint2d().distance(rampPosition)))
                 .map(unit -> unit.getPosition().toPoint2d())

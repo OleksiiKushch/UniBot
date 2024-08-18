@@ -20,6 +20,7 @@ import com.uni.functions.BuildSupplyDepot;
 import com.uni.functions.unit.Ghost;
 import com.uni.strategies.Strategy;
 import com.uni.surveyor.GameMap;
+import com.uni.functions.SpeedMining;
 import com.uni.utils.UniBotUtils;
 
 import java.util.Optional;
@@ -136,15 +137,21 @@ public class DoubleNuke5Min implements Strategy,
                         (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST_ACADEMY) == 2)
                 // build scv ...
 
+                .inQueue((obs, act) -> {
+                            if (UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2) {
+                                obs.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_GHOST)).stream()
+                                        .map(UnitInPool::unit)
+                                        .forEach(ghost -> act.unitCommand(ghost, Abilities.BEHAVIOR_HOLD_FIRE_ON_GHOST, true));
+                            }
+                        }, (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
+
                 // move two ghost on enemy main using medivac
                 .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_MEDIVAC).ifPresent(unit -> {
-                    if (UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2) {
                         obs.getUnits().stream()
                                 .map(UnitInPool::unit)
                                 .filter(u -> u.getType() == Units.TERRAN_GHOST)
                                 .forEach(ghost -> act.unitCommand(unit, Abilities.LOAD, ghost, true));
                         act.unitCommand(unit, Abilities.MOVE, GameMap.enemyMainMostDistantPoint, true);
-                    }
                 }), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_MEDIVAC) == 1 && UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 0)
 
                 .inQueue(this::buildNukes,
@@ -152,11 +159,8 @@ public class DoubleNuke5Min implements Strategy,
 
                 // drop two ghost on enemy main
                 .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_MEDIVAC).ifPresent(unit ->
-                        act.unitCommand(unit, Abilities.UNLOAD_ALL_AT_MEDIVAC, GameMap.enemyMainMostDistantPoint, true)), (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
-                .inQueue((obs, act) -> obs.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_GHOST)).stream()
-                                .map(UnitInPool::unit)
-                                .forEach(ghost -> act.unitCommand(ghost, Abilities.BEHAVIOR_HOLD_FIRE_ON_GHOST, false)),
-                        (obs, act) -> true)
+                        act.unitCommand(unit, Abilities.UNLOAD_ALL_AT_MEDIVAC, GameMap.enemyMainMostDistantPoint, true)),
+                        (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_GHOST) == 2)
 
                 .addTag(BuildOrderTag.BUILD_SCV_S, 15)          // after 16 steps
                 .addTag(BuildOrderTag.BUILD_SUPPLY_DEPOTS, 24)
@@ -168,10 +172,12 @@ public class DoubleNuke5Min implements Strategy,
     public void onGameStart(ObservationInterface observation, ActionInterface actions) {
         GameMap.init(observation);
         splitScvsBetweenMineralsOnStartGame(observation, actions); // TODO: improve the following algorithm
+        SpeedMining.calculateSpeedMining(observation);
     }
 
     @Override
     public void onStep(ObservationInterface observation, ActionInterface actions) {
+        SpeedMining.speedMiningWithSCV(observation, actions);
         dropMule(observation, actions);
         ghostHunterMode(observation, actions);
         manageSupplyDepodInWall(observation, actions);

@@ -54,7 +54,7 @@ public interface BuildStructure {
         Stream<Unit> unitStream = observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SCV)).stream()
                 .map(UnitInPool::unit)
                 .filter(unit -> {
-                    boolean result = isScvGoingToMineMinerals(unit) && isScvNotGoingToMineGas(gases, unit);
+                    boolean result = isScvGoingToMineMinerals(unit) && isScvNotGoingToMineGas(gases, unit) || isScvJustMove(unit);
                     if (additionalFilterForFindingScv != null) {
                         return result || additionalFilterForFindingScv.test(unit);
                     }
@@ -66,6 +66,10 @@ public interface BuildStructure {
         }
 
         return unitStream.limit(amount).collect(Collectors.toList());
+    }
+
+    private boolean isScvJustMove(Unit unit) {
+        return !unit.getOrders().isEmpty() && Abilities.MOVE.equals(unit.getOrders().get(0).getAbility());
     }
 
     private boolean isScvGoingToMineMinerals(Unit unit) {

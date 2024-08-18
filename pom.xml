@@ -47,7 +47,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>com.uni.Ladder</mainClass>
+                            <mainClass>com.uni.LadderLauncher</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

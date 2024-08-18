@@ -5,7 +5,6 @@ import com.github.ocraft.s2client.bot.gateway.ObservationInterface;
 import com.github.ocraft.s2client.protocol.data.Abilities;
 import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
-import com.uni.functions.BuildStructure;
 import com.uni.surveyor.GameMap;
 import com.uni.utils.UniBotUtils;
 

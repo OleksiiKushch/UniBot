@@ -4,6 +4,7 @@ import com.github.ocraft.s2client.bot.gateway.ActionInterface;
 import com.github.ocraft.s2client.bot.gateway.ObservationInterface;
 import com.github.ocraft.s2client.bot.gateway.UnitInPool;
 import com.github.ocraft.s2client.protocol.data.Abilities;
+import com.github.ocraft.s2client.protocol.data.UnitType;
 import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
@@ -12,7 +13,9 @@ import com.github.ocraft.s2client.protocol.unit.Unit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class UniBotUtils {
 
@@ -41,14 +44,24 @@ public class UniBotUtils {
                 .anyMatch(order -> order.getAbility() == abilityToUpgrade)).orElse(false);
     }
 
-    public static List<Unit> findNearestUnits(ObservationInterface observation, Point2d target, Units unitType, Alliance unitAlliance,
+    public static List<Unit> findNearestUnits(ObservationInterface observation, Point2d target, Set<UnitType> unitTypes, Alliance unitAlliance,
                                               int limit, Predicate<Unit> additionalFilter) {
-        return observation.getUnits(unitAlliance, UnitInPool.isUnit(unitType)).stream()
+        return observation.getUnits(unitAlliance).stream()
                 .map(UnitInPool::unit)
+                .filter(u -> unitTypes.contains(u.getType()))
                 .filter(additionalFilter)
                 .sorted(Comparator.comparing(unit -> unit.getPosition().toPoint2d().distance(target)))
                 .limit(limit)
                 .toList();
+    }
+
+    public static Optional<Unit> findNearestBase(ObservationInterface observation, Point2d target) {
+        return Optional.ofNullable(
+                UniBotUtils.findNearestUnits(observation, target,
+                        Set.of(Units.TERRAN_COMMAND_CENTER,
+                                Units.TERRAN_ORBITAL_COMMAND,
+                                Units.TERRAN_PLANETARY_FORTRESS),
+                        Alliance.SELF, 1, u -> true).get(0));
     }
 
     public static boolean enemyUnitInVision(ObservationInterface observation, Unit myUnit, float range) {
