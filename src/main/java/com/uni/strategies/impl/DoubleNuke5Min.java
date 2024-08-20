@@ -23,6 +23,8 @@ import com.uni.surveyor.GameMap;
 import com.uni.functions.SpeedMining;
 import com.uni.utils.UniBotUtils;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 
@@ -43,9 +45,9 @@ public class DoubleNuke5Min implements Strategy,
                 // TODO: add stop scv after move
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 13)
-                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
-                        (obs, act) -> true)
+//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
+//                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
+//                        (obs, act) -> true)
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 14)
                 .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
@@ -171,12 +173,13 @@ public class DoubleNuke5Min implements Strategy,
     @Override
     public void onGameStart(ObservationInterface observation, ActionInterface actions) {
         GameMap.init(observation);
-        splitScvsBetweenMineralsOnStartGame(observation, actions); // TODO: improve the following algorithm
         SpeedMining.calculateSpeedMining(observation);
+        SpeedMining.initialSCVsSplit(observation, actions);
     }
 
     @Override
     public void onStep(ObservationInterface observation, ActionInterface actions) {
+        SpeedMining.keepLastSCVs(observation, actions);
         SpeedMining.speedMiningWithSCV(observation, actions);
         dropMule(observation, actions);
         ghostHunterMode(observation, actions);

@@ -18,6 +18,7 @@ public interface GasMining extends BuildStructure {
     // TODO: Sometimes, you get SCVs with minerals anyway!
     default void tryBuildGasRefinery(ObservationInterface observation, ActionInterface actions) {
         final int NEED_ONLY_ONE_SCV = 1;
+        final double RADIUS = 10.0;
 
         observation.getUnits(Alliance.SELF).stream()
                 .map(UnitInPool::unit)
@@ -25,7 +26,7 @@ public interface GasMining extends BuildStructure {
                                 || Units.TERRAN_ORBITAL_COMMAND.equals(unit.getType())
                                 || Units.TERRAN_PLANETARY_FORTRESS.equals(unit.getType()))
                 .limit(1)
-                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, 2, u -> true))
+                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, RADIUS, 2, u -> true))
                 .flatMap(List::stream)
                 .filter(gas -> isFree(observation, gas.getPosition().toPoint2d()))
                 .limit(1)

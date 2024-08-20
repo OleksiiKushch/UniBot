@@ -13,67 +13,70 @@ import com.github.ocraft.s2client.protocol.unit.UnitOrder;
 import com.uni.utils.UniBotUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class SpeedMining {
 
     private static final double RADIUS_FOR_MINERALS_SEARCHING_NEAR_BASE = 10.0f;
     private static final double DISTANCE_TOWARDS_MINERAL_AND_BASE = 1.325d; // radius
 
+    private static Map<Unit, Unit> initialLastSCVsTargets;
     private static final HashMap<Tag, Point2d> speedMiningPoints = new HashMap<>();
     private static final HashMap<Tag, Unit> patchesByTag = new HashMap<>();
 
     public static void calculateSpeedMining(ObservationInterface observation) {
-        List<UnitInPool> initPatch = findNearestBaseMineralPatches(observation, observation.getStartLocation().toPoint2d());
-        calculateSpeedMining(initPatch, observation.getStartLocation().toPoint2d());
+        final Point2d startPosition = observation.getStartLocation().toPoint2d();
+        List<UnitInPool> initPatch = findNearestBaseMineralPatches(observation, startPosition);
+        calculateSpeedMining(initPatch, startPosition);
     }
 
-    private static List<UnitInPool> findNearestBaseMineralPatches(ObservationInterface observation, Point2d start) {
+    private static List<UnitInPool> findNearestBaseMineralPatches(ObservationInterface observation, Point2d startPosition) {
         List<UnitInPool> result = new ArrayList<>();
-
         List<UnitInPool> allPatch = new ArrayList<>();
         allPatch.addAll(observation.getUnits(Alliance.NEUTRAL, UnitInPool.isUnit(Units.NEUTRAL_MINERAL_FIELD)));
+        allPatch.addAll(observation.getUnits(Alliance.NEUTRAL, UnitInPool.isUnit(Units.NEUTRAL_MINERAL_FIELD750)));
         allPatch.addAll(observation.getUnits(Alliance.NEUTRAL, UnitInPool.isUnit(Units.NEUTRAL_RICH_MINERAL_FIELD)));
-
-        for (UnitInPool s : allPatch) {
-            if (s.unit().getPosition().toPoint2d().distance(start) < RADIUS_FOR_MINERALS_SEARCHING_NEAR_BASE) {
-                result.add(s);
+        allPatch.addAll(observation.getUnits(Alliance.NEUTRAL, UnitInPool.isUnit(Units.NEUTRAL_RICH_MINERAL_FIELD750)));
+        for (UnitInPool path : allPatch) {
+            if (path.unit().getPosition().toPoint2d().distance(startPosition) < RADIUS_FOR_MINERALS_SEARCHING_NEAR_BASE) {
+                result.add(path);
             }
         }
-
         return result;
     }
 
     private static void calculateSpeedMining(List<UnitInPool> patches, Point2d basePosition) {
         for (UnitInPool patch1 : patches) {
             Point2d toward = towards(patch1.unit().getPosition().toPoint2d(), basePosition);
-
             for (UnitInPool patch2 : patches) {
                 if (patch1 != patch2 && patch2.unit().getPosition().toPoint2d().distance(toward) < DISTANCE_TOWARDS_MINERAL_AND_BASE &&
                         patch1.unit().getPosition().toPoint2d().distance(basePosition) > patch2.unit().getPosition().toPoint2d().distance(basePosition)) {
-                    Point2d[] i = getIntersections(
+                    Point2d[] intersections = getIntersections(
                             patch1.unit().getPosition().toPoint2d().getX(),
                             patch1.unit().getPosition().toPoint2d().getY(),
                             patch2.unit().getPosition().toPoint2d().getX(),
                             patch2.unit().getPosition().toPoint2d().getY());
-                    if (i != null) {
+                    if (intersections != null) {
                         Point2d temp;
-                        if (i[0].distance(basePosition) < i[1].distance(basePosition)) {
-                            temp = i[0];
+                        if (intersections[0].distance(basePosition) < intersections[1].distance(basePosition)) {
+                            temp = intersections[0];
                         } else {
-                            temp = i[1];
+                            temp = intersections[1];
                         }
-
                         toward = temp;
                         break;
                     }
                 }
             }
-
             SpeedMining.speedMiningPoints.put(patch1.getTag(), toward);
             SpeedMining.patchesByTag.put(patch1.getTag(), patch1.unit());
         }
@@ -105,6 +108,86 @@ public class SpeedMining {
         }
     }
 
+    public static void initialSCVsSplit(ObservationInterface observation, ActionInterface actions) {
+        Collection<Unit> targetUnits = patchesByTag.values();
+        Map<Unit, Unit> result = new LinkedHashMap<>();
+        targetUnits.stream()
+                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD750)
+                .forEach(mineral ->  result.put(
+                        UniBotUtils.findNearestUnits(observation, mineral.getPosition().toPoint2d(),
+                                Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u)).get(0), mineral));
+        targetUnits.stream()
+                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD)
+                .forEach(mineral -> result.put(
+                        UniBotUtils.findNearestUnits(observation, mineral.getPosition().toPoint2d(),
+                                Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u)).get(0), mineral));
+        targetUnits.stream()
+                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD)
+                .forEach(mineral -> result.put(
+                        UniBotUtils.findNearestUnits(observation, mineral.getPosition().toPoint2d(),
+                                Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u)).get(0), mineral));
+        result.entrySet().stream()
+                .limit(8)
+                .forEach(entry -> {
+//                    actions.unitCommand(entry.getKey(), Abilities.MOVE, speedMiningPoints.get(entry.getValue().getTag()), false);
+//                    actions.unitCommand(entry.getKey(), Abilities.HARVEST_GATHER, entry.getValue(), true);
+                    actions.unitCommand(entry.getKey(), Abilities.SMART, entry.getValue(), false);
+                });
+
+        initialLastSCVsTargets = result.entrySet().stream()
+                .skip(8)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    }
+
+    public static void keepLastSCVs(ObservationInterface observation, ActionInterface actions) {
+//        if (observation.getGameLoop() < 20) {
+//            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
+//                actions.unitCommand(entry.getKey(), Abilities.MOVE, entry.getKey().getPosition().toPoint2d(), false);
+//            }
+//        }
+        if (20 < observation.getGameLoop() && observation.getGameLoop() < 50) {
+            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
+                actions.unitCommand(entry.getKey(), Abilities.MOVE, speedMiningPoints.get(entry.getValue().getTag()), false);
+            }
+        }
+        if (observation.getGameLoop() == 51) {
+            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
+                actions.unitCommand(entry.getKey(), Abilities.HARVEST_GATHER, entry.getValue(), true);
+            }
+        }
+    }
+
+    public static void countSCVsOnMineral(ObservationInterface observation, double step) {
+        Point2d startPosition = observation.getStartLocation().toPoint2d();
+        patchesByTag.values().stream()
+                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD) // TODO: add rich minerals
+                .forEach(mineral -> {
+                    Point2d mineralPosition = mineral.getPosition().toPoint2d();
+                    double dx = startPosition.getX() - mineralPosition.getX();
+                    double dy = startPosition.getY() - mineralPosition.getY();
+                    double distance = Math.sqrt(dx * dx + dy * dy);
+                    int pointsCount = (int)(distance / step);
+
+                    double xStep = dx / pointsCount;
+                    double yStep = dy / pointsCount;
+
+                    List<Unit> tempResult = new ArrayList<>();
+                    for (int i = 1; i <= pointsCount; i++) {
+                        double x = mineralPosition.getX() + i * xStep;
+                        double y = mineralPosition.getY() + i * yStep;
+
+                        tempResult.addAll(UniBotUtils.findNearestUnits(observation, Point2d.of((float)x, (float)y),
+                                Set.of(Units.TERRAN_SCV), Alliance.SELF, step * 2, 1, u -> true));
+                    }
+                    List<Unit> result = tempResult.stream()
+                            .collect(Collectors.collectingAndThen(
+                                    Collectors.toMap(Unit::getTag, unit -> unit, (unit1, unit2) -> unit1),
+                                    map -> new ArrayList<>(map.values())
+                            ));
+                    System.out.print(mineral.getTag() + ": " + result.size() + "; ");
+                });
+        System.out.println();
+    }
 
     public static void speedMiningWithSCV(ObservationInterface observation, ActionInterface actions) {
         Iterator<UnitInPool> units = observation.getUnits(Alliance.SELF, isHarvestReturnScv()).iterator();
@@ -138,8 +221,8 @@ public class SpeedMining {
                                             if (target != null) {
                                                 Unit patch = patchesByTag.get(harvestGatherScvOrder.getTargetedUnitTag().get());
                                                 if (patch != null && harvestGatherScv.unit().getOrders().size() == 1 &&
-                                                        target.distance(harvestGatherScv.unit().getPosition().toPoint2d()) > 0.75D &&
-                                                        target.distance(harvestGatherScv.unit().getPosition().toPoint2d()) < 1.5D) {
+                                                        target.distance(harvestGatherScv.unit().getPosition().toPoint2d()) > 0.75d &&
+                                                        target.distance(harvestGatherScv.unit().getPosition().toPoint2d()) < 1.5d) {
                                                     actions.unitCommand(harvestGatherScv.unit(), Abilities.MOVE, target, false);
                                                     actions.unitCommand(harvestGatherScv.unit(), Abilities.HARVEST_GATHER, patch, true);
                                                 }
@@ -152,11 +235,12 @@ public class SpeedMining {
                                 base = UniBotUtils.findNearestBase(observation, scv.unit().getPosition().toPoint2d());
                             } while (scv.unit().getOrders().size() != 1);
                         } while (base.isEmpty());
-                    } while (Float.compare((base.get()).getBuildProgress(), 1.0F) != 0);
-                } while (!((base.get()).getPosition().toPoint2d().distance(scv.unit().getPosition().toPoint2d()) > 0.75D + (double) (base.get()).getRadius() + (double) scv.unit().getRadius()));
-            } while (!((base.get()).getPosition().toPoint2d().distance(scv.unit().getPosition().toPoint2d()) < 1.5D + (double) (base.get()).getRadius() + (double) scv.unit().getRadius()));
+                    } while (Float.compare((base.get()).getBuildProgress(), 1.0f) != 0);
+                } while (!((base.get()).getPosition().toPoint2d().distance(scv.unit().getPosition().toPoint2d()) > 0.75d + (double) (base.get()).getRadius() + (double) scv.unit().getRadius()));
+            } while (!((base.get()).getPosition().toPoint2d().distance(scv.unit().getPosition().toPoint2d()) < 1.5d + (double) (base.get()).getRadius() + (double) scv.unit().getRadius()));
 
-            if ((scv.unit().getOrders().get(0)).getTargetedUnitTag().isPresent() && !(( scv.unit().getOrders().get(0)).getTargetedUnitTag().get()).equals((base.get()).getTag())) {
+            // return mineral
+            if ((scv.unit().getOrders().get(0)).getTargetedUnitTag().isPresent() && !((scv.unit().getOrders().get(0)).getTargetedUnitTag().get()).equals((base.get()).getTag())) {
                 // SCV is harvesting another base
             } else {
                 double xDiff = (scv.unit().getPosition().toPoint2d().getX() - (base.get()).getPosition().toPoint2d().getX());
@@ -173,9 +257,10 @@ public class SpeedMining {
 
     private static Predicate<UnitInPool> isHarvestReturnScv() {
         return (unitInPool) -> UnitInPool.isUnit(Units.TERRAN_SCV).test(unitInPool) &&
-                        Float.compare(unitInPool.unit().getBuildProgress(), 1.0f) == 0 &&
-                        unitInPool.unit().getOrders().stream()
-                                .anyMatch((unitOrder) -> Abilities.HARVEST_RETURN.equals(unitOrder.getAbility()));
+                Float.compare(unitInPool.unit().getBuildProgress(), 1.0f) == 0 &&
+                UnitInPool.isCarryingVespene().negate().test(unitInPool) &&
+                unitInPool.unit().getOrders().stream()
+                        .anyMatch((unitOrder) -> Abilities.HARVEST_RETURN.equals(unitOrder.getAbility()));
     }
 
     private static Predicate<UnitInPool> isHarvestGatherScv() {
@@ -192,7 +277,6 @@ public class SpeedMining {
             float y = (float) ((double) (target2.getY() - target1.getY()) / (target1.distance(target2) / DISTANCE_TOWARDS_MINERAL_AND_BASE));
             ret = target1.add(Point2d.of(x, y));
         }
-
         return ret;
     }
 }

@@ -19,6 +19,7 @@ public interface MineralMining {
 
     int MULE_ENERGY = 50;
     float IS_CLOSE_ENOUGH_MINERAL = 8.0f;
+    double RADIUS_FOR_SEARCH_ON_WHOLE_MAP = 1000.0;
 
     default void backToMineralMining(ObservationInterface observation, ActionInterface actions, Unit unit) {
         findNearestMineralPatch(observation, unit.getPosition().toPoint2d(), 1)
@@ -34,19 +35,11 @@ public interface MineralMining {
     }
 
     default Optional<Unit> findNearestMineralPatch(ObservationInterface observation, Point2d target, int limit) {
-        return UniBotUtils.findNearestUnits(observation, target, Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, limit, this::isMineralCloseEnoughActiveBase).stream()
+        return UniBotUtils.findNearestUnits(observation, target, Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, RADIUS_FOR_SEARCH_ON_WHOLE_MAP, limit, this::isMineralCloseEnoughActiveBase).stream()
                 .findFirst();
     }
 
     // TODO: add condition for finding the largest mineral
-
-    default void splitScvsBetweenMineralsOnStartGame(ObservationInterface observation, ActionInterface actions) {
-        observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SCV)).stream()
-                .map(UnitInPool::unit)
-                .forEach(scv -> findNearestMineralPatch(observation, scv.getPosition().toPoint2d(), 1).ifPresent(
-                            mineral -> actions.unitCommand(scv, Abilities.SMART, mineral, false))
-                );
-    }
 
     private boolean isMineralCloseEnoughActiveBase(Unit mineral) {
         return GameMap.basesCoordinates.get(0).distance(mineral.getPosition().toPoint2d()) < IS_CLOSE_ENOUGH_MINERAL;

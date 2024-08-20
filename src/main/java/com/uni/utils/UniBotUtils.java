@@ -45,10 +45,11 @@ public class UniBotUtils {
     }
 
     public static List<Unit> findNearestUnits(ObservationInterface observation, Point2d target, Set<UnitType> unitTypes, Alliance unitAlliance,
-                                              int limit, Predicate<Unit> additionalFilter) {
+                                              double radius, int limit, Predicate<Unit> additionalFilter) {
         return observation.getUnits(unitAlliance).stream()
                 .map(UnitInPool::unit)
                 .filter(u -> unitTypes.contains(u.getType()))
+                .filter(u -> u.getPosition().toPoint2d().distance(target) <= radius)
                 .filter(additionalFilter)
                 .sorted(Comparator.comparing(unit -> unit.getPosition().toPoint2d().distance(target)))
                 .limit(limit)
@@ -61,7 +62,7 @@ public class UniBotUtils {
                         Set.of(Units.TERRAN_COMMAND_CENTER,
                                 Units.TERRAN_ORBITAL_COMMAND,
                                 Units.TERRAN_PLANETARY_FORTRESS),
-                        Alliance.SELF, 1, u -> true).get(0));
+                        Alliance.SELF, 10.0d, 1, u -> true).get(0));
     }
 
     public static boolean enemyUnitInVision(ObservationInterface observation, Unit myUnit, float range) {

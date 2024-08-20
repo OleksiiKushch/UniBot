@@ -1,6 +1,7 @@
 package com.uni;
 
 import com.github.ocraft.s2client.bot.S2Coordinator;
+import com.github.ocraft.s2client.protocol.game.BattlenetMap;
 import com.github.ocraft.s2client.protocol.game.Difficulty;
 import com.github.ocraft.s2client.protocol.game.LocalMap;
 import com.github.ocraft.s2client.protocol.game.Race;
@@ -73,7 +74,7 @@ public class LocalLauncher {
                         S2Coordinator.createParticipant(Race.TERRAN, bot),
                         S2Coordinator.createComputer(Race.ZERG, Difficulty.VERY_EASY))
                 .launchStarcraft()
-//                .startGame(BattlenetMap.of(OCEANBORN_LE));
+//                .startGame(BattlenetMap.of(AMPHION_LE));
                 .startGame(LocalMap.of(Paths.get("C:\\Program Files (x86)\\StarCraft II\\Maps\\Oceanborn513AIE.SC2Map")));
 
         while (s2Coordinator.update()) {
