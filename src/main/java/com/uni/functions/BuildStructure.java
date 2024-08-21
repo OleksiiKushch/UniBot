@@ -37,7 +37,7 @@ public interface BuildStructure {
                                    Predicate<Unit> additionalFilterForFindingScv) {
         if (asSingle && isAlreadyBuildIt(observation, abilityTypeForStructure)) return;
 
-        List<Unit> units = getNearestFreeScvOrWhoAreGoingToMineMinerals(observation, targetPoint, 1, additionalFilterForFindingScv);
+        List<Unit> units = getNearestFreeScv(observation, targetPoint, 1, additionalFilterForFindingScv);
         if (!units.isEmpty()) {
             Unit unit = units.get(0);
             actions.unitCommand(
@@ -48,15 +48,17 @@ public interface BuildStructure {
         }
     }
 
-    default List<Unit> getNearestFreeScvOrWhoAreGoingToMineMinerals(ObservationInterface observation, Point2d target, int amount,
-                                                                    Predicate<Unit> additionalFilterForFindingScv) {
+    default List<Unit> getNearestFreeScv(ObservationInterface observation, Point2d target, int amount,
+                                         Predicate<Unit> additionalFilter) {
         List<Tag> gases = getListOfActiveTerranRefineries(observation);
         Stream<Unit> unitStream = observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SCV)).stream()
+                .filter(UnitInPool.isCarryingMinerals().negate())
+                .filter(UnitInPool.isCarryingVespene().negate())
                 .map(UnitInPool::unit)
                 .filter(unit -> {
                     boolean result = isScvGoingToMineMinerals(unit) && isScvNotGoingToMineGas(gases, unit) || isScvJustMove(unit);
-                    if (additionalFilterForFindingScv != null) {
-                        return result || additionalFilterForFindingScv.test(unit);
+                    if (additionalFilter != null) {
+                        return result || additionalFilter.test(unit);
                     }
                     return result;
                 });

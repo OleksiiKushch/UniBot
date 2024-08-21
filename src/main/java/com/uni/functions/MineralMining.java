@@ -8,6 +8,7 @@ import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
 import com.github.ocraft.s2client.protocol.unit.Unit;
+import com.github.ocraft.s2client.protocol.unit.UnitOrder;
 import com.uni.surveyor.GameMap;
 import com.uni.utils.UniBotUtils;
 
@@ -37,6 +38,26 @@ public interface MineralMining {
     default Optional<Unit> findNearestMineralPatch(ObservationInterface observation, Point2d target, int limit) {
         return UniBotUtils.findNearestUnits(observation, target, Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, RADIUS_FOR_SEARCH_ON_WHOLE_MAP, limit, this::isMineralCloseEnoughActiveBase).stream()
                 .findFirst();
+    }
+
+    default void correctCcRallyPoint(ObservationInterface observation, ActionInterface actions) {
+        observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_COMMAND_CENTER)).stream()
+                .map(UnitInPool::unit)
+                .filter(cc -> cc.getOrders().stream()
+                        .anyMatch(order -> order.getAbility() == Abilities.TRAIN_SCV))
+                .filter(cc -> cc.getOrders().stream()
+                            .filter(order -> order.getAbility() == Abilities.TRAIN_SCV)
+                            .findAny()
+                            .filter(unitOrder -> unitOrder.getProgress().orElse(0.0f) > 0.95f).isPresent())
+                .forEach(cc -> {
+                    Unit mineral = findOptionalMineral(observation);
+//                    actions.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false);
+                });
+    }
+
+    private Unit findOptionalMineral(ObservationInterface observation) {
+        SpeedMining.countSCVsOnMineral(observation, 0.5f);
+        return null;
     }
 
     // TODO: add condition for finding the largest mineral

@@ -30,14 +30,14 @@ public interface GasMining extends BuildStructure {
                 .flatMap(List::stream)
                 .filter(gas -> isFree(observation, gas.getPosition().toPoint2d()))
                 .limit(1)
-                .forEach(gas -> getNearestFreeScvOrWhoAreGoingToMineMinerals(observation, gas.getPosition().toPoint2d(), NEED_ONLY_ONE_SCV, null).stream()
+                .forEach(gas -> getNearestFreeScv(observation, gas.getPosition().toPoint2d(), NEED_ONLY_ONE_SCV, null).stream()
                                 .limit(NEED_ONLY_ONE_SCV)
                                 .forEach(scv -> actions.unitCommand(scv, Abilities.BUILD_REFINERY, gas, false)
                 ));
     }
 
     default void fillGasWithWorkers(ObservationInterface observation, ActionInterface actions, Unit gas) {
-        getNearestFreeScvOrWhoAreGoingToMineMinerals(observation, gas.getPosition().toPoint2d(), 2, null).forEach(worker ->
+        getNearestFreeScv(observation, gas.getPosition().toPoint2d(), 2, null).forEach(worker ->
                 actions.unitCommand(worker, Abilities.SMART, gas, false));
     }
 

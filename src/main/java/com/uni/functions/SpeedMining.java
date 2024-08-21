@@ -11,7 +11,6 @@ import com.github.ocraft.s2client.protocol.unit.Tag;
 import com.github.ocraft.s2client.protocol.unit.Unit;
 import com.github.ocraft.s2client.protocol.unit.UnitOrder;
 import com.uni.utils.UniBotUtils;
-import io.vertx.reactivex.ext.web.Route;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -168,9 +167,6 @@ public class SpeedMining {
     }
 
     public static void keepLastSCVs(ObservationInterface observation, ActionInterface actions) {
-//        if (observation.getGameLoop() < 20) {
-//            initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.MOVE, key.getPosition().toPoint2d(), false));
-//        }
         if (20 < observation.getGameLoop() && observation.getGameLoop() < 50) {
             initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.MOVE, speedMiningPoints.get(value.getTag()), false));
         }
@@ -182,11 +178,12 @@ public class SpeedMining {
     public static void countSCVsOnMineral(ObservationInterface observation, double step) {
         Point2d startPosition = observation.getStartLocation().toPoint2d();
         patchesByTag.values().stream()
-                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD) // TODO: add rich minerals
+                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD ||
+                        mineral.getType() == Units.NEUTRAL_MINERAL_FIELD750) // TODO: add rich minerals
                 .forEach(mineral -> {
-                    Point2d mineralPosition = mineral.getPosition().toPoint2d();
-                    double dx = startPosition.getX() - mineralPosition.getX();
-                    double dy = startPosition.getY() - mineralPosition.getY();
+                    Point2d mineralPathPosition = speedMiningPoints.get(mineral.getTag());
+                    double dx = startPosition.getX() - mineralPathPosition.getX();
+                    double dy = startPosition.getY() - mineralPathPosition.getY();
                     double distance = Math.sqrt(dx * dx + dy * dy);
                     int pointsCount = (int)(distance / step);
 
@@ -195,8 +192,8 @@ public class SpeedMining {
 
                     List<Unit> tempResult = new ArrayList<>();
                     for (int i = 1; i <= pointsCount; i++) {
-                        double x = mineralPosition.getX() + i * xStep;
-                        double y = mineralPosition.getY() + i * yStep;
+                        double x = mineralPathPosition.getX() + i * xStep;
+                        double y = mineralPathPosition.getY() + i * yStep;
 
                         tempResult.addAll(UniBotUtils.findNearestUnits(observation, Point2d.of((float)x, (float)y),
                                 Set.of(Units.TERRAN_SCV), Alliance.SELF, step * 2, 1, u -> true));

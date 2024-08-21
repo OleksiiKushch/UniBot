@@ -23,8 +23,6 @@ import com.uni.surveyor.GameMap;
 import com.uni.functions.SpeedMining;
 import com.uni.utils.UniBotUtils;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 
 
@@ -45,9 +43,9 @@ public class DoubleNuke5Min implements Strategy,
                 // TODO: add stop scv after move
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 13)
-//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-//                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
-//                        (obs, act) -> true)
+                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
+                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
+                        (obs, act) -> true)
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 14)
                 .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
@@ -83,7 +81,7 @@ public class DoubleNuke5Min implements Strategy,
                         (obs, act) -> UniBotUtils.isStartAbility(obs, Units.TERRAN_COMMAND_CENTER, Abilities.MORPH_ORBITAL_COMMAND))
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_GHOST_ACADEMY, GameMap.main.techAndUpgraders().secondGhostsAcademy(), true, null),
                         (obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_GHOST_ACADEMY).isPresent())
-                .inQueue((obs, act) -> act.unitCommand(getNearestFreeScvOrWhoAreGoingToMineMinerals(obs, GameMap.main.rampWall().secondSupplyPosition(), 1, null).get(0),
+                .inQueue((obs, act) -> act.unitCommand(getNearestFreeScv(obs, GameMap.main.rampWall().secondSupplyPosition(), 1, null).get(0),
                                 Abilities.MOVE, GameMap.main.rampWall().secondSupplyPosition(), false),
                         (obs, act) -> true)
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_SUPPLY_DEPOT, GameMap.main.rampWall().secondSupplyPosition(), true, u -> !u.getOrders().isEmpty() && u.getOrders().get(0).getAbility() == Abilities.MOVE),
@@ -179,26 +177,28 @@ public class DoubleNuke5Min implements Strategy,
 
     @Override
     public void onStep(ObservationInterface observation, ActionInterface actions) {
-        SpeedMining.keepLastSCVs(observation, actions);
-        SpeedMining.speedMiningWithSCV(observation, actions);
-        dropMule(observation, actions);
-        ghostHunterMode(observation, actions);
         manageSupplyDepodInWall(observation, actions);
 
-        buildOrder.execute(observation, actions);
+        // mining
+        SpeedMining.keepLastSCVs(observation, actions); // initial split
+        SpeedMining.speedMiningWithSCV(observation, actions);
+        dropMule(observation, actions);
+        correctCcRallyPoint(observation, actions);
 
+        // units
+        ghostHunterMode(observation, actions);
+
+        // build order
+        buildOrder.execute(observation, actions);
         if (buildOrder.isReadyFor(BuildOrderTag.BUILD_SCV_S)) {
             tryToBuildScv(observation, actions, 22);
         }
-
         if (buildOrder.isReadyFor(BuildOrderTag.BUILD_SUPPLY_DEPOTS)) {
             tryToBuildSupply(observation, actions, true);
         }
-
         if (buildOrder.isReadyFor(BuildOrderTag.BUILD_MARIENS)) {
 
         }
-
         if (buildOrder.isBuildOrderFinished()) {
 
             if (areGhostAcademiesSleep(observation)) {
