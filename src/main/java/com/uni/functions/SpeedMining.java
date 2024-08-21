@@ -11,6 +11,7 @@ import com.github.ocraft.s2client.protocol.unit.Tag;
 import com.github.ocraft.s2client.protocol.unit.Unit;
 import com.github.ocraft.s2client.protocol.unit.UnitOrder;
 import com.uni.utils.UniBotUtils;
+import io.vertx.reactivex.ext.web.Route;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,7 +30,7 @@ public class SpeedMining {
     private static final double RADIUS_FOR_MINERALS_SEARCHING_NEAR_BASE = 10.0f;
     private static final double DISTANCE_TOWARDS_MINERAL_AND_BASE = 1.325d; // radius
 
-    private static Map<Unit, Unit> initialLastSCVsTargets;
+    private static final Map<Unit, Unit> initialLastSCVsTargets = new LinkedHashMap<>();
     private static final HashMap<Tag, Point2d> speedMiningPoints = new HashMap<>();
     private static final HashMap<Tag, Unit> patchesByTag = new HashMap<>();
 
@@ -121,39 +122,60 @@ public class SpeedMining {
                 .forEach(mineral -> result.put(
                         UniBotUtils.findNearestUnits(observation, mineral.getPosition().toPoint2d(),
                                 Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u)).get(0), mineral));
+
+        // optimization
+        boolean test = true;
+        while (test) {
+            int i = 0;
+            for (Map.Entry<Unit, Unit> entry : result.entrySet()) {
+                Unit actualNearestMineral = UniBotUtils.findNearestUnits(observation, entry.getKey().getPosition().toPoint2d(), Set.of(Units.NEUTRAL_MINERAL_FIELD), Alliance.NEUTRAL, 10.0d, 1, u -> true).get(0);
+                if (actualNearestMineral.getTag() != entry.getValue().getTag()) {
+                    Map.Entry<Unit, Unit> targetEntry = getEntryByMineralTag(result, actualNearestMineral.getTag());
+                    double currentDistance = entry.getKey().getPosition().toPoint2d().distance(entry.getValue().getPosition().toPoint2d()) +
+                            targetEntry.getKey().getPosition().toPoint2d().distance(targetEntry.getValue().getPosition().toPoint2d());
+                    double afterSwapDistance = entry.getKey().getPosition().toPoint2d().distance(actualNearestMineral.getPosition().toPoint2d()) +
+                            targetEntry.getKey().getPosition().toPoint2d().distance(entry.getValue().getPosition().toPoint2d());
+                    if (currentDistance > afterSwapDistance) {
+                        Unit previousTarget = entry.getValue();
+                        result.put(entry.getKey(), actualNearestMineral);
+                        result.put(targetEntry.getKey(), previousTarget);
+                        break;
+                    }
+                }
+                i++;
+                if (i == result.size()) {
+                    test = false;
+                }
+            }
+        }
+
+        result.forEach((key, value) -> {
+            actions.unitCommand(key, Abilities.SMART, value, false);
+        });
+
         targetUnits.stream()
                 .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD)
-                .forEach(mineral -> result.put(
+                .forEach(mineral -> initialLastSCVsTargets.put(
                         UniBotUtils.findNearestUnits(observation, mineral.getPosition().toPoint2d(),
-                                Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u)).get(0), mineral));
-        result.entrySet().stream()
-                .limit(8)
-                .forEach(entry -> {
-//                    actions.unitCommand(entry.getKey(), Abilities.MOVE, speedMiningPoints.get(entry.getValue().getTag()), false);
-//                    actions.unitCommand(entry.getKey(), Abilities.HARVEST_GATHER, entry.getValue(), true);
-                    actions.unitCommand(entry.getKey(), Abilities.SMART, entry.getValue(), false);
-                });
+                                Set.of(Units.TERRAN_SCV), Alliance.SELF, 10.0d, 1, u -> !result.containsKey(u) && !initialLastSCVsTargets.containsKey(u)).get(0), mineral));
+    }
 
-        initialLastSCVsTargets = result.entrySet().stream()
-                .skip(8)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+    private static Map.Entry<Unit, Unit> getEntryByMineralTag(Map<Unit, Unit> result, Tag mineralTag) {
+        return result.entrySet().stream()
+                .filter(entry -> entry.getValue().getTag().equals(mineralTag))
+                .findFirst()
+                .orElse(null);
     }
 
     public static void keepLastSCVs(ObservationInterface observation, ActionInterface actions) {
 //        if (observation.getGameLoop() < 20) {
-//            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
-//                actions.unitCommand(entry.getKey(), Abilities.MOVE, entry.getKey().getPosition().toPoint2d(), false);
-//            }
+//            initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.MOVE, key.getPosition().toPoint2d(), false));
 //        }
         if (20 < observation.getGameLoop() && observation.getGameLoop() < 50) {
-            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
-                actions.unitCommand(entry.getKey(), Abilities.MOVE, speedMiningPoints.get(entry.getValue().getTag()), false);
-            }
+            initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.MOVE, speedMiningPoints.get(value.getTag()), false));
         }
         if (observation.getGameLoop() == 51) {
-            for (Map.Entry<Unit, Unit> entry : initialLastSCVsTargets.entrySet()) {
-                actions.unitCommand(entry.getKey(), Abilities.HARVEST_GATHER, entry.getValue(), true);
-            }
+            initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.HARVEST_GATHER, value, true));
         }
     }
 
