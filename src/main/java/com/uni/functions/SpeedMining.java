@@ -14,11 +14,13 @@ import com.uni.utils.UniBotUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -30,8 +32,10 @@ public class SpeedMining {
     private static final double DISTANCE_TOWARDS_MINERAL_AND_BASE = 1.325d; // radius
 
     private static final Map<Unit, Unit> initialLastSCVsTargets = new LinkedHashMap<>();
-    private static final HashMap<Tag, Point2d> speedMiningPoints = new HashMap<>();
-    private static final HashMap<Tag, Unit> patchesByTag = new HashMap<>();
+    private static final Map<Tag, Point2d> speedMiningPoints = new HashMap<>();
+    private static final Map<Tag, Unit> patchesByTag = new HashMap<>();
+    public static final Map<Tag, List<Unit>> mineralLines = new HashMap<>();  // <base, <mineral, number_of_SCVs>>
+    public static boolean tempFlag = true;    // TODO: refactor it
 
     public static void calculateSpeedMining(ObservationInterface observation) {
         final Point2d startPosition = observation.getStartLocation().toPoint2d();
@@ -77,8 +81,8 @@ public class SpeedMining {
                     }
                 }
             }
-            SpeedMining.speedMiningPoints.put(patch1.getTag(), toward);
-            SpeedMining.patchesByTag.put(patch1.getTag(), patch1.unit());
+            speedMiningPoints.put(patch1.getTag(), toward);
+            patchesByTag.put(patch1.getTag(), patch1.unit());
         }
     }
 
@@ -175,37 +179,78 @@ public class SpeedMining {
         }
     }
 
-    public static void countSCVsOnMineral(ObservationInterface observation, double step) {
-        Point2d startPosition = observation.getStartLocation().toPoint2d();
-        patchesByTag.values().stream()
-                .filter(mineral -> mineral.getType() == Units.NEUTRAL_MINERAL_FIELD ||
-                        mineral.getType() == Units.NEUTRAL_MINERAL_FIELD750) // TODO: add rich minerals
-                .forEach(mineral -> {
-                    Point2d mineralPathPosition = speedMiningPoints.get(mineral.getTag());
-                    double dx = startPosition.getX() - mineralPathPosition.getX();
-                    double dy = startPosition.getY() - mineralPathPosition.getY();
-                    double distance = Math.sqrt(dx * dx + dy * dy);
-                    int pointsCount = (int)(distance / step);
-
-                    double xStep = dx / pointsCount;
-                    double yStep = dy / pointsCount;
-
-                    List<Unit> tempResult = new ArrayList<>();
-                    for (int i = 1; i <= pointsCount; i++) {
-                        double x = mineralPathPosition.getX() + i * xStep;
-                        double y = mineralPathPosition.getY() + i * yStep;
-
-                        tempResult.addAll(UniBotUtils.findNearestUnits(observation, Point2d.of((float)x, (float)y),
-                                Set.of(Units.TERRAN_SCV), Alliance.SELF, step * 2, 1, u -> true));
-                    }
-                    List<Unit> result = tempResult.stream()
-                            .collect(Collectors.collectingAndThen(
-                                    Collectors.toMap(Unit::getTag, unit -> unit, (unit1, unit2) -> unit1),
-                                    map -> new ArrayList<>(map.values())
-                            ));
-                    System.out.print(mineral.getTag() + ": " + result.size() + "; ");
+    public static Unit findOptionalMineral(ObservationInterface observation, float progress) {
+        System.out.println(mineralLines.size());
+        if (progress < 0.97f) {
+            tempFlag = true;
+        }
+        if (tempFlag) {
+            if (progress < 0.7f) {
+                return null;
+            } else if (progress >= 0.7f && progress < 0.98f) {    // data collection
+                Map<Tag, List<Unit>> tempResult = observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SCV)).stream()
+                        .map(UnitInPool::unit)
+                        .filter(unit -> unit.getOrders() != null && !unit.getOrders().isEmpty())
+                        .filter(unit -> unit.getOrders().stream().anyMatch(order -> Abilities.HARVEST_GATHER.equals(order.getAbility())))
+                        .collect(Collectors.groupingBy(unit -> unit.getOrders().stream()
+                                        .filter(order -> Abilities.HARVEST_GATHER.equals(order.getAbility()))
+                                        .findFirst()
+                                        .flatMap(UnitOrder::getTargetedUnitTag)
+                                        .orElseThrow(IllegalStateException::new),
+                                Collectors.toList()));
+                System.out.println("____________________________________________________________");
+                tempResult.forEach((key, value) -> {
+                    System.out.println("Mineral: " + key.getValue() + " SCVs: " + value.stream().map(Unit::getTag).map(Objects::toString).collect(Collectors.joining(", ", "{", "}")));
                 });
-        System.out.println();
+                System.out.println("____________________________________________________________");
+                tempResult.forEach((tag, units) -> {
+                    // Merge lists of units by the common tag
+                    mineralLines.merge(tag, units, (list1, list2) -> {
+                        List<Unit> mergedList = new ArrayList<>(list1);
+                        for (Unit unit : list2) {
+                            if (!containsUnitByTag(mergedList, unit.getTag())) {
+                                mergedList.add(unit);
+                            }
+                        }
+                        return mergedList;
+                    });
+                });
+
+                return null;
+            } else {
+                System.out.println("__________________________RESULT____________________________");
+                mineralLines.forEach((key, value) -> {
+                    System.out.println("Mineral: " + key.getValue() + " SCVs: " + value.stream().map(Unit::getTag).map(Objects::toString).collect(Collectors.joining(", ", "{", "}")));
+                });
+                Unit result = mineralLines.entrySet().stream()
+                        .filter(entry -> entry.getValue().size() < 2)
+                        .map(entry -> getUnitByTag(observation, entry.getKey()))
+                        .min(Comparator.comparing((Unit u) -> u.getMineralContents().orElse(0))
+                                .thenComparing(u -> u.getPosition().toPoint2d().distance(observation.getStartLocation().toPoint2d())))
+                        .orElse(null);
+                SpeedMining.mineralLines.clear();
+                SpeedMining.tempFlag = false;
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private static boolean containsUnitByTag(List<Unit> units, Tag tag) {
+        for (Unit unit : units) {
+            if (unit.getTag().equals(tag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Unit getUnitByTag(ObservationInterface observation, Tag tag) {
+        return observation.getUnits(Alliance.NEUTRAL).stream()
+                .map(UnitInPool::unit)
+                .filter(unit -> unit.getTag().equals(tag))
+                .findFirst()
+                .orElseThrow(IllegalStateException::new);
     }
 
     public static void speedMiningWithSCV(ObservationInterface observation, ActionInterface actions) {

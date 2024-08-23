@@ -12,6 +12,7 @@ import com.github.ocraft.s2client.protocol.unit.UnitOrder;
 import com.uni.surveyor.GameMap;
 import com.uni.utils.UniBotUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -41,23 +42,30 @@ public interface MineralMining {
     }
 
     default void correctCcRallyPoint(ObservationInterface observation, ActionInterface actions) {
-        observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_COMMAND_CENTER)).stream()
+        List<UnitInPool> ccs = observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_COMMAND_CENTER));
+        ccs.addAll(observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_ORBITAL_COMMAND)));
+        ccs.addAll(observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_PLANETARY_FORTRESS)));
+
+        ccs.stream()
                 .map(UnitInPool::unit)
                 .filter(cc -> cc.getOrders().stream()
                         .anyMatch(order -> order.getAbility() == Abilities.TRAIN_SCV))
-                .filter(cc -> cc.getOrders().stream()
-                            .filter(order -> order.getAbility() == Abilities.TRAIN_SCV)
-                            .findAny()
-                            .filter(unitOrder -> unitOrder.getProgress().orElse(0.0f) > 0.95f).isPresent())
+                .filter(cc -> getTrainScvProgress(cc) >= 0.69f)
                 .forEach(cc -> {
-                    Unit mineral = findOptionalMineral(observation);
-//                    actions.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false);
+                    Unit mineral = SpeedMining.findOptionalMineral(observation, getTrainScvProgress(cc));
+                    if (mineral != null) { // result found and ready to be used and processed
+                        actions.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false);
+                    }
                 });
     }
 
-    private Unit findOptionalMineral(ObservationInterface observation) {
-        SpeedMining.countSCVsOnMineral(observation, 0.5f);
-        return null;
+    private float getTrainScvProgress(Unit cc) {
+        return cc.getOrders().stream()
+                .filter(order -> order.getAbility() == Abilities.TRAIN_SCV)
+                .findAny()
+                .map(unitOrder -> unitOrder.getProgress()
+                        .orElse(0.0f))
+                .orElse(0.0f);
     }
 
     // TODO: add condition for finding the largest mineral

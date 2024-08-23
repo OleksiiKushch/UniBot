@@ -43,15 +43,15 @@ public class DoubleNuke5Min implements Strategy,
                 // TODO: add stop scv after move
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 13)
-                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
-                        (obs, act) -> true)
+//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
+//                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
+//                        (obs, act) -> true)
                 .inQueue(this::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 14)
-                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-                                        findNearestMineralPatch(obs, GameMap.basesCoordinates.get(0), 1).ifPresent(mineral ->
-                                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false))),
-                        (obs, act) -> true)
+//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
+//                                        findNearestMineralPatch(obs, GameMap.basesCoordinates.get(0), 1).ifPresent(mineral ->
+//                                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false))),
+//                        (obs, act) -> true)
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_SUPPLY_DEPOT, GameMap.main.rampWall().firstSupplyPosition(), true, null),
                         (obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_SUPPLY_DEPOT).isPresent())
                 .inQueue(this::tryToBuildScv,
