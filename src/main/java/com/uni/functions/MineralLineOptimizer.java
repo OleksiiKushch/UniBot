@@ -18,7 +18,9 @@ import java.util.stream.Collectors;
 
 public class MineralLineOptimizer {
 
-    private static final Map<Tag, List<UnitInPool>> mineralLines = new HashMap<>();  // <base, <mineral, number_of_SCVs>>
+    private static final Map<Tag, List<UnitInPool>> mineralLines = new HashMap<>();  // <base, <mineral, number_of_SCVs>> // for form result
+    private static LinkedHashMap<Unit, List<UnitInPool>> currentData;  // for consuming result
+    private static Stack<Unit> bigMinerals;
     public static List<UnitInPool> unavailableSCVs = new ArrayList<>();
     public static boolean tempFlag = true;
 
@@ -52,18 +54,32 @@ public class MineralLineOptimizer {
                     });
                 });
                 return null;
-            } else { // get result
-                Unit result = mineralLines.entrySet().stream()
+            } else { // form result
+                currentData = mineralLines.entrySet().stream()
                         .filter(entry -> entry.getValue().size() < 2)
                         .map(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey())
                                 .map(mineral -> Map.entry(mineral, entry.getValue())))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
-                        .min(Comparator.comparing((Map.Entry<Unit, List<UnitInPool>> entry) -> entry.getValue().size())
+                        .sorted(Comparator.comparing((Map.Entry<Unit, List<UnitInPool>> entry) -> entry.getValue().size())
+                                // TODO: may be improve between contests and distance (for example prioritize distance
+                                //  but if difference between contests too big then prioritize contests). Same for mule dropping (bigMinerals)
                                 .thenComparing(entry -> - entry.getKey().getMineralContents().orElse(0))
                                 .thenComparing(entry -> entry.getKey().getPosition().toPoint2d().distance(observation.getStartLocation().toPoint2d())))
-                        .map(Map.Entry::getKey)
-                        .orElse(null);
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                entry -> new ArrayList<>(entry.getValue()),
+                                (oldValue, newValue) -> newValue,
+                                LinkedHashMap::new
+                        ));
+                bigMinerals = mineralLines.keySet().stream()
+                        .map(tag -> UniBotUtils.getUnitByTag(observation, tag))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .filter(unit -> UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(unit.getType()))
+                        .sorted(Comparator.comparing((Unit mineral) -> mineral.getMineralContents().orElse(0))
+                                .thenComparing(mineral -> mineral.getPosition().toPoint2d().distance(observation.getStartLocation().toPoint2d())))
+                        .collect(Collectors.toCollection(Stack::new));
                 unavailableSCVs = mineralLines.entrySet().stream()
                         .flatMap(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey())
                                 .filter(unit -> UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(unit.getType())).stream().flatMap(unit -> entry.getValue().stream()))
@@ -72,7 +88,7 @@ public class MineralLineOptimizer {
                     unitsList.clear();
                 }
                 tempFlag = false;
-                return result;
+                return getAndRemoveFirstKey();
             }
         }
         return null;
@@ -83,16 +99,32 @@ public class MineralLineOptimizer {
                 .anyMatch(unit -> unit.getTag().equals(tag));
     }
 
-    // TODO: add optimization
+    private static Unit getAndRemoveFirstKey() {
+        if (currentData == null || currentData.isEmpty()) {
+            return null;
+        }
+        Map.Entry<Unit, List<UnitInPool>> firstEntry = currentData.entrySet().iterator().next();
+        Unit firstKey = firstEntry.getKey();
+        currentData.remove(firstKey);
+        return firstKey;
+    }
+
+    public static Unit findNearestMineralPatch() {
+        return getAndRemoveFirstKey();
+    }
+
     private static final double RADIUS_FOR_SEARCH_ON_WHOLE_MAP = 1000.0;
     public static Optional<Unit> findNearestMineralPatch(ObservationInterface observation, Point2d target, int limit) {
         return UniBotUtils.findNearestUnits(observation, target, UniBotConstants.ALL_NEUTRAL_MINERAL_FIELD_TYPES, Alliance.NEUTRAL, RADIUS_FOR_SEARCH_ON_WHOLE_MAP, limit, MineralLineOptimizer::isMineralCloseEnoughActiveBase).stream()
                 .findFirst();
     }
 
-    // TODO: add condition for finding the largest mineral
     private static final float IS_CLOSE_ENOUGH_MINERAL = 10.0f;
     private static boolean isMineralCloseEnoughActiveBase(Unit mineral) {
         return GameMap.basesCoordinates.get(0).distance(mineral.getPosition().toPoint2d()) < IS_CLOSE_ENOUGH_MINERAL;
+    }
+
+    public static Unit findNearestMineralPatchForMule() {
+        return bigMinerals.pop();
     }
 }

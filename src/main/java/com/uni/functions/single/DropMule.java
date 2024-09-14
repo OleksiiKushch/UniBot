@@ -16,7 +16,7 @@ public class DropMule {
         observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_ORBITAL_COMMAND)).stream()
                 .map(UnitInPool::unit)
                 .filter(orbital -> orbital.getEnergy().orElse(0.0f) >= MULE_ENERGY)
-                .forEach(orbital -> MineralLineOptimizer.findNearestMineralPatch(observation, orbital.getPosition().toPoint2d(), 1)
-                        .ifPresent(mineralCoordinate -> actions.unitCommand(orbital, Abilities.EFFECT_CALL_DOWN_MULE, mineralCoordinate, false)));
+                .forEach(orbital -> actions.unitCommand(orbital, Abilities.EFFECT_CALL_DOWN_MULE,
+                        MineralLineOptimizer.findNearestMineralPatchForMule(), false));
     }
 }

@@ -9,7 +9,11 @@ import com.uni.functions.MineralLineOptimizer;
 public class BackScvToMineralMining {
 
     public static void back(ObservationInterface observation, ActionInterface actions, Unit unit) {
-        MineralLineOptimizer.findNearestMineralPatch(observation, unit.getPosition().toPoint2d(), 1)
-                .ifPresent(mineralPath -> actions.unitCommand(unit, Abilities.SMART, mineralPath, false));
+        Unit targetMineral = MineralLineOptimizer.findNearestMineralPatch();
+        if (targetMineral == null) {
+            targetMineral = MineralLineOptimizer.findNearestMineralPatch(observation, unit.getPosition().toPoint2d(), 1)
+                    .orElse(null);
+        }
+        actions.unitCommand(unit, Abilities.SMART, targetMineral, false);
     }
 }
