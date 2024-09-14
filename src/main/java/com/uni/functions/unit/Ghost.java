@@ -7,11 +7,11 @@ import com.github.ocraft.s2client.protocol.data.Abilities;
 import com.github.ocraft.s2client.protocol.data.Units;
 import com.uni.utils.UniBotUtils;
 
-public interface Ghost {
+public class Ghost {
 
-    float CLOACK_ACTIVATION_RAGE = 9;
+    private static final float CLOACK_ACTIVATION_RAGE = 9;
 
-    default void ghostHunterMode(ObservationInterface observation, ActionInterface actions) {
+    public static void hunterMode(ObservationInterface observation, ActionInterface actions) {
         observation.getUnits().stream()
                 .map(UnitInPool::unit)
                 .filter(u -> u.getType() == Units.TERRAN_GHOST)

@@ -7,6 +7,7 @@ import com.github.ocraft.s2client.protocol.game.LocalMap;
 import com.github.ocraft.s2client.protocol.game.Race;
 import com.uni.strategies.Strategy;
 import com.uni.strategies.impl.DoubleNuke5Min;
+import com.uni.strategies.impl.ForTest;
 
 import java.nio.file.Paths;
 
@@ -19,6 +20,7 @@ public class LocalLauncher {
      * below    above
      */
     private static final String OCEANBORN_LE = "Oceanborn LE";
+    private static final String OCEANBORN_LE_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\Oceanborn513AIE.SC2Map";
     private static final String CRIMSON_COURT_LE = "Crimson Court LE";
     /**
      * 1 2 2
@@ -55,6 +57,7 @@ public class LocalLauncher {
     // the closest field type that detects a ramp (`FieldType.ONLY_PATHABLE`) is outside the main
     // need to improve the ramp detection algorithm
     private static final String GOLDENAURA_LE = "Goldenaura LE";
+    private static final String GOLDENAURA_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\GoldenAura513AIE.SC2Map";
 
     // full not working (workers not building after some time)
     // for one side, ramp builder not working (higher position)
@@ -64,18 +67,27 @@ public class LocalLauncher {
     // full not working
     private static final String SITE_DELTA_LE = "Site Delta LE";
 
+    private static final String EQUILIBRIUM_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\Equilibrium513AIE.SC2Map";
+
+    private static final String GRESVAN_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\Gresvan513AIE.SC2Map";
+
+    private static final String HARD_LEAD_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\HardLead513AIE.SC2Map";
+
+    private static final String SITE_DELTA_LOCAL_PATH = "C:\\Program Files (x86)\\StarCraft II\\Maps\\SiteDelta513AIE.SC2Map";
+
     public static void main(String[] args) {
         Strategy strategy = new DoubleNuke5Min();
         UniBot bot = new UniBot(strategy);
+
         S2Coordinator s2Coordinator = S2Coordinator.setup()
                 .loadSettings(args)
-                .setRealtime(true)
+//                .setRealtime(true)
                 .setParticipants(
                         S2Coordinator.createParticipant(Race.TERRAN, bot),
                         S2Coordinator.createComputer(Race.ZERG, Difficulty.VERY_EASY))
                 .launchStarcraft()
 //                .startGame(BattlenetMap.of(AMPHION_LE));
-                .startGame(LocalMap.of(Paths.get("C:\\Program Files (x86)\\StarCraft II\\Maps\\Oceanborn513AIE.SC2Map")));
+                .startGame(LocalMap.of(Paths.get(EQUILIBRIUM_LOCAL_PATH)));
 
         while (s2Coordinator.update()) {
         }

@@ -8,6 +8,7 @@ import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
 import com.github.ocraft.s2client.protocol.unit.Unit;
+import com.uni.utils.UniBotConstants;
 import com.uni.utils.UniBotUtils;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public interface GasMining extends BuildStructure {
                                 || Units.TERRAN_ORBITAL_COMMAND.equals(unit.getType())
                                 || Units.TERRAN_PLANETARY_FORTRESS.equals(unit.getType()))
                 .limit(1)
-                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), Set.of(Units.NEUTRAL_VESPENE_GEYSER), Alliance.NEUTRAL, RADIUS, 2, u -> true))
+                .map(cc -> UniBotUtils.findNearestUnits(observation, cc.getPosition().toPoint2d(), UniBotConstants.ALL_NEUTRAL_GEYSER_TYPES, Alliance.NEUTRAL, RADIUS, 2, u -> true))
                 .flatMap(List::stream)
                 .filter(gas -> isFree(observation, gas.getPosition().toPoint2d()))
                 .limit(1)

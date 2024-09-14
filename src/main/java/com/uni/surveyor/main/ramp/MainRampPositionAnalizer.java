@@ -98,7 +98,7 @@ public class MainRampPositionAnalizer {
             secondSupplyPosition = FieldAnalizer.getExternalCoordinates(matrix.length, centerY + 1 - 1, centerX + 1 + 1, point.getX(), point.getY()).add(-0.5f, 0.5f);
             factoryPosition = FieldAnalizer.getExternalCoordinates(matrix.length, centerY + 1 + 1, centerX + 1 + 1 + FieldAnalizer.SIZE_3x3, point.getX(), point.getY());
             starPortPosition = FieldAnalizer.getExternalCoordinates(matrix.length, centerY + 1 + 1, centerX + 1 + 1 + FieldAnalizer.SIZE_3x3 + FieldAnalizer.SIZE_3x3, point.getX(), point.getY());
-            // TODO: process `firstDefaultBarackRallyPoint` and `secondDefaultBarackRallyPoint` if needed
+            firstDefaultBarackRallyPoint = FieldAnalizer.getExternalCoordinates(matrix.length, centerY + 1 + 1 + 3, centerX + 1 + 1 - 3, point.getX(), point.getY());
         }
         return new MainRampWallCoordinates(
                 firstSupplyPosition,
