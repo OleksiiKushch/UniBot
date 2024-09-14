@@ -51,23 +51,26 @@ public class MineralLineOptimizer {
                         return mergedList;
                     });
                 });
-
                 return null;
-            } else {
+            } else { // get result
                 Unit result = mineralLines.entrySet().stream()
                         .filter(entry -> entry.getValue().size() < 2)
-                        .map(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey()))
+                        .map(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey())
+                                .map(mineral -> Map.entry(mineral, entry.getValue())))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
-                        .min(Comparator.comparing((Unit u) -> UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(u.getType()) ? 0 : 1)
-                                .thenComparing(u -> u.getMineralContents().orElse(0))
-                                .thenComparing(u -> u.getPosition().toPoint2d().distance(observation.getStartLocation().toPoint2d())))
+                        .min(Comparator.comparing((Map.Entry<Unit, List<UnitInPool>> entry) -> entry.getValue().size())
+                                .thenComparing(entry -> - entry.getKey().getMineralContents().orElse(0))
+                                .thenComparing(entry -> entry.getKey().getPosition().toPoint2d().distance(observation.getStartLocation().toPoint2d())))
+                        .map(Map.Entry::getKey)
                         .orElse(null);
                 unavailableSCVs = mineralLines.entrySet().stream()
                         .flatMap(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey())
                                 .filter(unit -> UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(unit.getType())).stream().flatMap(unit -> entry.getValue().stream()))
                         .toList();
-                mineralLines.clear();
+                for (List<UnitInPool> unitsList : mineralLines.values()) {
+                    unitsList.clear();
+                }
                 tempFlag = false;
                 return result;
             }
@@ -88,7 +91,7 @@ public class MineralLineOptimizer {
     }
 
     // TODO: add condition for finding the largest mineral
-    private static final float IS_CLOSE_ENOUGH_MINERAL = 8.0f;
+    private static final float IS_CLOSE_ENOUGH_MINERAL = 10.0f;
     private static boolean isMineralCloseEnoughActiveBase(Unit mineral) {
         return GameMap.basesCoordinates.get(0).distance(mineral.getPosition().toPoint2d()) < IS_CLOSE_ENOUGH_MINERAL;
     }
