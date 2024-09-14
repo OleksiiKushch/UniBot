@@ -54,6 +54,7 @@ public interface BuildStructure {
         Stream<Unit> unitStream = observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SCV)).stream()
                 .filter(UnitInPool.isCarryingMinerals().negate())
                 .filter(UnitInPool.isCarryingVespene().negate())
+                .filter(unitInPool -> !MineralLineOptimizer.unavailableSCVs.contains(unitInPool))
                 .map(UnitInPool::unit)
                 .filter(unit -> {
                     boolean result = isScvGoingToMineMinerals(unit) && isScvNotGoingToMineGas(gases, unit) || isScvJustMove(unit);

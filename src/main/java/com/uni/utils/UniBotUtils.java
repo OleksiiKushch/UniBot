@@ -8,6 +8,7 @@ import com.github.ocraft.s2client.protocol.data.UnitType;
 import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
+import com.github.ocraft.s2client.protocol.unit.Tag;
 import com.github.ocraft.s2client.protocol.unit.Unit;
 
 import java.util.Comparator;
@@ -15,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class UniBotUtils {
 
@@ -26,6 +26,13 @@ public class UniBotUtils {
     public static Optional<Unit> getMyUnit(ObservationInterface observation, Units unitType) {
         return observation.getUnits(Alliance.SELF, UnitInPool.isUnit(unitType)).stream()
                 .map(UnitInPool::unit)
+                .findFirst();
+    }
+
+    public static Optional<Unit> getUnitByTag(ObservationInterface observation, Tag tag) {
+        return observation.getUnits(Alliance.NEUTRAL).stream()
+                .map(UnitInPool::unit)
+                .filter(unit -> unit.getTag().equals(tag))
                 .findFirst();
     }
 
@@ -58,7 +65,7 @@ public class UniBotUtils {
 
     public static Optional<Unit> findNearestBase(ObservationInterface observation, Point2d target) {
         return Optional.ofNullable(
-                UniBotUtils.findNearestUnits(observation, target,
+                findNearestUnits(observation, target,
                         Set.of(Units.TERRAN_COMMAND_CENTER,
                                 Units.TERRAN_ORBITAL_COMMAND,
                                 Units.TERRAN_PLANETARY_FORTRESS),

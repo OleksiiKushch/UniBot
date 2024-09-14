@@ -12,28 +12,25 @@ import com.github.ocraft.s2client.protocol.unit.Unit;
 import com.uni.buildorder.BuildOrder;
 import com.uni.buildorder.BuildOrderTag;
 import com.uni.buildorder.BuildOrderUtils;
-import com.uni.functions.BuildCsv;
-import com.uni.functions.BuildStructure;
-import com.uni.functions.GasMining;
-import com.uni.functions.MineralMining;
-import com.uni.functions.BuildSupplyDepot;
+import com.uni.functions.*;
+import com.uni.functions.single.BackScvToMineralMining;
+import com.uni.functions.single.BuildCsv;
+import com.uni.functions.single.SetCcMineralRallyPoint;
+import com.uni.functions.single.DropMule;
+import com.uni.functions.single.initial.InitialSCVsSplit;
+import com.uni.functions.single.initial.InitialSpeedMining;
 import com.uni.functions.unit.Ghost;
 import com.uni.strategies.Strategy;
 import com.uni.surveyor.GameMap;
-import com.uni.functions.SpeedMining;
 import com.uni.utils.UniBotUtils;
 
 import java.util.Optional;
 
 
 public class DoubleNuke5Min implements Strategy,
-        BuildCsv,
         BuildStructure,
         BuildSupplyDepot,
-        MineralMining,
-        GasMining,
-
-        Ghost
+        GasMining
 {
 
     private final BuildOrder buildOrder;
@@ -41,12 +38,12 @@ public class DoubleNuke5Min implements Strategy,
     public DoubleNuke5Min() {
         buildOrder = BuildOrder.builder()
                 // TODO: add stop scv after move
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 13)
 //                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
 //                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
 //                        (obs, act) -> true)
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 14)
 //                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
 //                                        findNearestMineralPatch(obs, GameMap.basesCoordinates.get(0), 1).ifPresent(mineral ->
@@ -54,9 +51,9 @@ public class DoubleNuke5Min implements Strategy,
 //                        (obs, act) -> true)
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_SUPPLY_DEPOT, GameMap.main.rampWall().firstSupplyPosition(), true, null),
                         (obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_SUPPLY_DEPOT).isPresent())
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 15)
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 16)
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_BARRACKS, GameMap.main.rampWall().barackPosition(), true,
                                 u -> !u.getOrders().isEmpty() && u.getOrders().get(0).getAbility() == Abilities.BUILD_SUPPLY_DEPOT),
@@ -65,11 +62,11 @@ public class DoubleNuke5Min implements Strategy,
                         (obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_REFINERY).isPresent())
                 .inQueue(this::tryBuildGasRefinery,
                         (obs, act) -> UniBotUtils.countMyUnit(obs, Units.TERRAN_REFINERY) == 2)
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 17)
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 18)
-                .inQueue(this::tryToBuildScv,
+                .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 19)
                 .inQueue((obs, act) -> BuildOrderUtils.tryToBuildUnit(obs, act, Units.TERRAN_BARRACKS, Abilities.TRAIN_MARINE),
                         (obs, act) -> obs.getFoodUsed() == 20)
@@ -171,27 +168,27 @@ public class DoubleNuke5Min implements Strategy,
     @Override
     public void onGameStart(ObservationInterface observation, ActionInterface actions) {
         GameMap.init(observation);
-        SpeedMining.calculateSpeedMining(observation);
-        SpeedMining.initialSCVsSplit(observation, actions);
+        InitialSpeedMining.calculate(observation);
+        InitialSCVsSplit.splitSCVs(observation, actions);
     }
 
     @Override
     public void onStep(ObservationInterface observation, ActionInterface actions) {
-        manageSupplyDepodInWall(observation, actions);
+        UpDownSupplyDepodInRampWall.upDown(observation, actions);
 
         // mining
-        SpeedMining.keepLastSCVs(observation, actions); // initial split
-        SpeedMining.speedMiningWithSCV(observation, actions);
-        dropMule(observation, actions);
-        correctCcRallyPoint(observation, actions);
+        InitialSCVsSplit.keepLastSCVs(observation, actions);    // temp
+        MineralSCVsAccelerator.speedMiningWithSCV(observation, actions);
+        DropMule.drop(observation, actions);
+        SetCcMineralRallyPoint.set(observation, actions);
 
         // units
-        ghostHunterMode(observation, actions);
+        Ghost.hunterMode(observation, actions);
 
         // build order
         buildOrder.execute(observation, actions);
         if (buildOrder.isReadyFor(BuildOrderTag.BUILD_SCV_S)) {
-            tryToBuildScv(observation, actions, 22);
+            BuildCsv.tryToBuildScv(observation, actions, 22);
         }
         if (buildOrder.isReadyFor(BuildOrderTag.BUILD_SUPPLY_DEPOTS)) {
             tryToBuildSupply(observation, actions, true);
@@ -225,14 +222,10 @@ public class DoubleNuke5Min implements Strategy,
     public void onUnitIdle(ObservationInterface observation, ActionInterface actions, UnitInPool unitInPool) {
         Unit unit = unitInPool.unit();
         switch ((Units) unit.getType()) {
-            case TERRAN_SCV, TERRAN_MULE:
-                backToMineralMining(observation, actions, unit);
-                break;
-            case TERRAN_REFINERY:
-                fillGasWithWorkers(observation, actions, unit);
-                break;
-            default:
-                break;
+            case TERRAN_SCV, TERRAN_MULE -> BackScvToMineralMining.back(observation, actions, unit);
+            case TERRAN_REFINERY -> fillGasWithWorkers(observation, actions, unit);
+            default -> {
+            }
         }
     }
 
@@ -265,24 +258,5 @@ public class DoubleNuke5Min implements Strategy,
                 .map(UnitInPool::unit)
                 .filter(u -> u.getType() == Units.TERRAN_GHOST_ACADEMY)
                 .forEach(ghostAcademy -> actions.unitCommand(ghostAcademy, Abilities.BUILD_NUKE, false));
-    }
-
-    private void manageSupplyDepodInWall(ObservationInterface observation, ActionInterface actions) {
-        observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SUPPLY_DEPOT_LOWERED)).stream()
-                .map(UnitInPool::unit)
-                .filter(unit -> GameMap.main.rampWall().firstSupplyPosition().equals(unit.getPosition().toPoint2d()))
-                .forEach(supply -> {
-                    if (UniBotUtils.enemyUnitInVision(observation, supply, 7)) {
-                        actions.unitCommand(supply, Abilities.MORPH_SUPPLY_DEPOT_RAISE, false);
-                    }
-                });
-        observation.getUnits(Alliance.SELF, UnitInPool.isUnit(Units.TERRAN_SUPPLY_DEPOT)).stream()
-                .map(UnitInPool::unit)
-                .filter(unit -> GameMap.main.rampWall().firstSupplyPosition().equals(unit.getPosition().toPoint2d()))
-                .forEach(supply -> {
-                    if (!UniBotUtils.enemyUnitInVision(observation, supply, 7)) {
-                        actions.unitCommand(supply, Abilities.MORPH_SUPPLY_DEPOT_LOWER, false);
-                    }
-                });
     }
 }
