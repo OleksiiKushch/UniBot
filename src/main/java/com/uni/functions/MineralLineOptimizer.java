@@ -21,7 +21,7 @@ public class MineralLineOptimizer {
     private static final Map<Tag, List<UnitInPool>> mineralLines = new HashMap<>();  // <base, <mineral, number_of_SCVs>> // for form result
     private static LinkedHashMap<Unit, List<UnitInPool>> currentData;  // for consuming result
     private static Stack<Unit> bigMinerals;
-    public static List<UnitInPool> unavailableSCVs = new ArrayList<>();
+    public static List<Unit> unavailableSCVs = new ArrayList<>();
     public static boolean tempFlag = true;
 
     public static Unit findOptionalMineral(ObservationInterface observation, float progress) {
@@ -83,6 +83,7 @@ public class MineralLineOptimizer {
                 unavailableSCVs = mineralLines.entrySet().stream()
                         .flatMap(entry -> UniBotUtils.getUnitByTag(observation, entry.getKey())
                                 .filter(unit -> UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(unit.getType())).stream().flatMap(unit -> entry.getValue().stream()))
+                        .map(UnitInPool::unit)
                         .toList();
                 for (List<UnitInPool> unitsList : mineralLines.values()) {
                     unitsList.clear();

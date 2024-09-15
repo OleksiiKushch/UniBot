@@ -8,6 +8,7 @@ import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.data.Upgrade;
 import com.github.ocraft.s2client.protocol.spatial.Point2d;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
+import com.github.ocraft.s2client.protocol.unit.Tag;
 import com.github.ocraft.s2client.protocol.unit.Unit;
 import com.uni.buildorder.BuildOrder;
 import com.uni.buildorder.BuildOrderTag;
@@ -24,7 +25,9 @@ import com.uni.strategies.Strategy;
 import com.uni.surveyor.GameMap;
 import com.uni.utils.UniBotUtils;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 public class DoubleNuke5Min implements Strategy,
@@ -40,15 +43,17 @@ public class DoubleNuke5Min implements Strategy,
                 // TODO: add stop scv after move
                 .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 13)
-//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-//                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, GameMap.main.rampWall().firstSupplyPosition(), false)),
-//                        (obs, act) -> true)
+                .inQueue((obs, act) ->  {
+                            if (obs.getGameLoop() > 230) {
+                                List<Unit> result = getNearestFreeScv(obs, GameMap.main.rampWall().firstSupplyPosition(), 1, null);
+                                if (!result.isEmpty()) {
+                                    act.unitCommand(result.get(0), Abilities.MOVE, GameMap.main.rampWall().firstSupplyPosition(), false);
+                                }
+                            }
+                        },
+                        (obs, act) -> obs.getGameLoop() > 230)
                 .inQueue(BuildCsv::tryToBuildScv,
                         (obs, act) -> obs.getFoodUsed() == 14)
-//                .inQueue((obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_COMMAND_CENTER).ifPresent(cc ->
-//                                        findNearestMineralPatch(obs, GameMap.basesCoordinates.get(0), 1).ifPresent(mineral ->
-//                                                act.unitCommand(cc, Abilities.RALLY_COMMAND_CENTER, mineral, false))),
-//                        (obs, act) -> true)
                 .inQueue((obs, act) -> tryBuildStructure(obs, act, Abilities.BUILD_SUPPLY_DEPOT, GameMap.main.rampWall().firstSupplyPosition(), true, null),
                         (obs, act) -> UniBotUtils.getMyUnit(obs, Units.TERRAN_SUPPLY_DEPOT).isPresent())
                 .inQueue(BuildCsv::tryToBuildScv,

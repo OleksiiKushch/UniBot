@@ -7,6 +7,7 @@ import com.github.ocraft.s2client.protocol.data.Units;
 import com.github.ocraft.s2client.protocol.unit.Alliance;
 import com.github.ocraft.s2client.protocol.unit.Tag;
 import com.github.ocraft.s2client.protocol.unit.Unit;
+import com.uni.functions.MineralLineOptimizer;
 import com.uni.utils.UniBotConstants;
 import com.uni.utils.UniBotUtils;
 
@@ -60,6 +61,9 @@ public class InitialSCVsSplit {
         }
 
         result.forEach((key, value) -> {
+            if (UniBotConstants.ALL_BIG_NEUTRAL_MINERAL_FIELD_TYPES.contains(value.getType())) {
+                MineralLineOptimizer.unavailableSCVs.add(key);
+            }
             actions.unitCommand(key, Abilities.SMART, value, false);
         });
 
@@ -84,6 +88,7 @@ public class InitialSCVsSplit {
         }
         if (observation.getGameLoop() == 51) {
             initialLastSCVsTargets.forEach((key, value) -> actions.unitCommand(key, Abilities.HARVEST_GATHER, value, true));
+            MineralLineOptimizer.unavailableSCVs.addAll(initialLastSCVsTargets.values());
         }
     }
 }

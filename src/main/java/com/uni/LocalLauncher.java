@@ -84,7 +84,7 @@ public class LocalLauncher {
                         S2Coordinator.createComputer(Race.ZERG, Difficulty.VERY_EASY))
                 .launchStarcraft()
 //                .startGame(BattlenetMap.of(OCEANBORN_LE));
-                .startGame(LocalMap.of(Paths.get(OCEANBORN_LE_LOCAL_PATH)));
+                .startGame(LocalMap.of(Paths.get(EQUILIBRIUM_LOCAL_PATH)));
 
         while (s2Coordinator.update()) {
         }
